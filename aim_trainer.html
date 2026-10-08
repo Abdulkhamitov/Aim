@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aim Trainer</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #111827;
+      color: #f9fafb;
+      font: 16px system-ui, sans-serif;
+      text-align: center;
+    }
+
+    .stats { margin: 16px; }
+    .stats span { margin: 0 12px; }
+
+    canvas {
+      display: block;
+      width: min(900px, 100%);
+      height: auto;
+      margin: 0 auto;
+      background: #1f2937;
+      border: 1px solid #4b5563;
+      border-radius: 10px;
+      cursor: crosshair;
+      touch-action: manipulation;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: 0;
+      border-radius: 8px;
+      background: #38bdf8;
+      color: #082f49;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Aim Trainer</h1>
+  <p>Попадай по мишеням за 60 секунд.</p>
+
+  <div class="stats">
+    <span>Время: <b id="time">60</b></span>
+    <span>Попадания: <b id="hits">0</b></span>
+    <span>Точность: <b id="accuracy">0%</b></span>
+  </div>
+
+  <button id="start">Начать тренировку</button>
+  <p id="message">Нажми кнопку, чтобы начать.</p>
+
+  <canvas id="game" width="900" height="520"></canvas>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const startButton = document.getElementById("start");
+
+    let running = false;
+    let endAt = 0;
+    let hits = 0;
+    let shots = 0;
+    let target = null;
+
+    function newTarget() {
+      const radius = 22;
+      target = {
+        x: radius + Math.random() * (canvas.width - radius * 2),
+        y: radius + Math.random() * (canvas.height - radius * 2),
+        radius
+      };
+    }
+
+    function updateStats(secondsLeft) {
+      document.getElementById("time").textContent = secondsLeft;
+      document.getElementById("hits").textContent = hits;
+      const accuracy = shots ? Math.round((hits / shots) * 100) : 0;
+      document.getElementById("accuracy").textContent = accuracy + "%";
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (target) {
+        ctx.beginPath();
+        ctx.arc(target.x, target.y, target.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "#fb4b4b";
+        ctx.fill();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "#fecaca";
+        ctx.stroke();
+      }
+
+      if (running) {
+        const secondsLeft = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+        updateStats(secondsLeft);
+
+        if (secondsLeft === 0) {
+          running = false;
+          target = null;
+          document.getElementById("message").textContent =
+            `Тренировка окончена. Попаданий: ${hits}, точность: ${
+              shots ? Math.round((hits / shots) * 100) : 0
+            }%.`;
+        }
+      }
+
+      requestAnimationFrame(draw);
+    }
+
+    startButton.addEventListener("click", () => {
+      hits = 0;
+      shots = 0;
+      running = true;
+      endAt = Date.now() + 60_000;
+      newTarget();
+      document.getElementById("message").textContent = "Тренировка идёт!";
+      updateStats(60);
+    });
+
+    canvas.addEventListener("click", (event) => {
+      if (!running || !target) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const x = (event.clientX - rect.left) * (canvas.width / rect.width);
+      const y = (event.clientY - rect.top) * (canvas.height / rect.height);
+      const distance = Math.hypot(x - target.x, y - target.y);
+
+      shots++;
+      if (distance <= target.radius) {
+        hits++;
+        newTarget();
+      }
+
+      updateStats(Math.max(0, Math.ceil((endAt - Date.now()) / 1000)));
+    });
+
+    draw();
+  </script>
+</body>
+</html>
